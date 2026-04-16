@@ -5,23 +5,61 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Okta Verify Device Register</title>
 <style>
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light dark;
+    --fg: light-dark(#111, #e8e8e8);
+    --muted: light-dark(#666, #9a9a9a);
+    --bg: light-dark(#fff, #111);
+    --surface: light-dark(#fff, #1c1c1c);
+    --border: light-dark(#bbb, #3a3a3a);
+    --border-strong: light-dark(#888, #555);
+    --btn-bg: light-dark(#f2f2f2, #2a2a2a);
+    --btn-bg-hover: light-dark(#e6e6e6, #333);
+    --accent: light-dark(#1b74e4, #4aa3ff);
+    --ok-bg: light-dark(#eaf6ec, #133a1a);
+    --ok-border: light-dark(#b4dcbc, #2a6a36);
+    --ok-fg: light-dark(#155724, #9adfa8);
+    --err-bg: light-dark(#fdecec, #3a1414);
+    --err-border: light-dark(#f1bcbc, #7a2a2a);
+    --err-fg: light-dark(#a31212, #ff8a8a);
+  }
+  html, body { background: var(--bg); color: var(--fg); }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 680px; margin: 2em auto; padding: 0 1em; line-height: 1.4; }
   h1 { margin-bottom: 0.2em; }
-  p.lead { color: #666; margin-top: 0; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  code { background: var(--btn-bg); padding: 0.05em 0.35em; border-radius: 3px; font-size: 0.9em; }
   label { display: block; margin: 1em 0 0.25em; font-weight: 600; }
-  input[type=text], textarea { width: 100%; font: inherit; padding: 0.5em; box-sizing: border-box; border: 1px solid #999; border-radius: 4px; background: canvas; color: canvastext; }
+  input[type=text], textarea {
+    width: 100%; font: inherit; padding: 0.5em; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface); color: var(--fg);
+  }
+  input[type=text]:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
   textarea { min-height: 4.5em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
-  button { font: inherit; padding: 0.6em 1.2em; margin-top: 1.2em; border: 1px solid #555; border-radius: 4px; background: #eee; cursor: pointer; }
-  button:disabled { opacity: 0.6; cursor: not-allowed; }
-  .drop { border: 2px dashed #888; padding: 1.5em; text-align: center; border-radius: 8px; outline: none; cursor: text; color: #666; }
-  .drop:focus, .drop.over { border-color: #28f; color: inherit; }
-  .drop.ok { border-color: #2a2; color: #2a2; }
-  .drop.err { border-color: #c33; color: #c33; }
-  .result { margin-top: 1.2em; padding: 1em; background: rgba(0,128,0,0.08); border: 1px solid rgba(0,128,0,0.3); border-radius: 6px; }
-  .error { margin-top: 1.2em; padding: 1em; background: rgba(192,0,0,0.08); border: 1px solid rgba(192,0,0,0.3); border-radius: 6px; color: #c00; }
-  .secret { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15em; word-break: break-all; user-select: all; padding: 0.4em 0.6em; background: canvas; border: 1px solid #999; border-radius: 4px; display: inline-block; margin-top: 0.4em; }
-  pre { background: rgba(128,128,128,0.1); padding: 0.75em; overflow-x: auto; font-size: 0.85em; border-radius: 4px; }
+  button {
+    font: inherit; padding: 0.6em 1.2em; margin-top: 1.2em;
+    border: 1px solid var(--border-strong); border-radius: 4px;
+    background: var(--btn-bg); color: var(--fg); cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--btn-bg-hover); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .drop {
+    border: 2px dashed var(--border-strong); padding: 1.5em; text-align: center;
+    border-radius: 8px; outline: none; cursor: text; color: var(--muted);
+  }
+  .drop:focus, .drop.over { border-color: var(--accent); color: var(--fg); }
+  .drop.ok { border-color: var(--ok-fg); color: var(--ok-fg); }
+  .drop.err { border-color: var(--err-fg); color: var(--err-fg); }
+  .result { margin-top: 1.2em; padding: 1em; background: var(--ok-bg); border: 1px solid var(--ok-border); border-radius: 6px; }
+  .error { margin-top: 1.2em; padding: 1em; background: var(--err-bg); border: 1px solid var(--err-border); border-radius: 6px; color: var(--err-fg); }
+  .secret {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15em;
+    word-break: break-all; user-select: all; padding: 0.4em 0.6em;
+    background: var(--surface); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px;
+    display: inline-block; margin-top: 0.4em;
+  }
+  pre { background: var(--btn-bg); padding: 0.75em; overflow-x: auto; font-size: 0.85em; border-radius: 4px; }
   .row { display: flex; gap: 0.5em; align-items: center; }
   .row button { margin-top: 0; }
 </style>
