@@ -19,3 +19,7 @@ npm install
 npm run dev
 npm run deploy
 ```
+
+## License
+
+MIT
