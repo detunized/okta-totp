@@ -14,7 +14,8 @@ const USER_AGENT = "D2DD7D3915.com.okta.android.auth/6.8.1 DeviceSDK/0.19.0 Andr
 export default {
   async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/api/register" && req.method === "POST") {
+    if (url.pathname === "/api/register") {
+      if (req.method !== "POST") return json({ error: "Use POST" }, 405);
       return handleRegister(req);
     }
     return new Response("Not found", { status: 404 });
@@ -34,6 +35,11 @@ async function handleRegister(req) {
     return json({ error: "oktaUrl must start with oktaverify://" }, 400);
   }
 
+  const displayName = typeof deviceName === "string" ? deviceName.trim() : "";
+  if (!displayName) {
+    return json({ error: "deviceName must not be empty" }, 400);
+  }
+
   let parsed;
   try {
     parsed = new URL(oktaUrl);
@@ -51,9 +57,12 @@ async function handleRegister(req) {
 
   let serverUrl;
   try {
-    serverUrl = new URL("/idp/authenticators", s).toString();
+    serverUrl = new URL("/idp/authenticators", s);
   } catch (err) {
     return json({ error: `Invalid server URL s=${s}: ${err.message}` }, 400);
+  }
+  if (serverUrl.protocol !== "https:") {
+    return json({ error: `Server URL must use https: s=${s}` }, 400);
   }
 
   const body = {
@@ -64,7 +73,7 @@ async function handleRegister(req) {
       clientInstanceVersion: "6.8.1",
       clientInstanceKey: CLIENT_INSTANCE_KEY,
       deviceAttestation: {},
-      displayName: (typeof deviceName === "string" && deviceName.trim()) || "1Password",
+      displayName,
       fullDiskEncryption: false,
       isHardwareProtectionEnabled: false,
       manufacturer: "unknown",

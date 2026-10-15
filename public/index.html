@@ -81,13 +81,19 @@
 
 <div id="result"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" integrity="sha384-hStSInNIZ8ljtOVrmrgf7zdHMapaLBWoSnPTtF0nzsybp4+LuhDz6sHuEVpWIX8o" crossorigin="anonymous"></script>
 <script>
   const drop = document.getElementById("drop");
   const urlInput = document.getElementById("url");
   const deviceInput = document.getElementById("device");
   const submitBtn = document.getElementById("submit");
   const resultDiv = document.getElementById("result");
+
+  const deviceName = () => deviceInput.value.trim();
+  const updateSubmit = () => { submitBtn.disabled = !deviceName(); };
+
+  deviceInput.addEventListener("input", updateSubmit);
+  updateSubmit();
 
   drop.addEventListener("click", () => drop.focus());
 
@@ -96,15 +102,14 @@
     for (const item of items) {
       if (item.type.startsWith("image/")) {
         e.preventDefault();
-        const blob = item.getAsFile();
-        await handleImage(blob);
+        await handleImage(item.getAsFile());
         return;
       }
     }
-    const text = e.clipboardData?.getData("text") || "";
-    if (text.trim().startsWith("oktaverify://")) {
+    const text = e.clipboardData?.getData("text")?.trim() || "";
+    if (text.startsWith("oktaverify://")) {
       e.preventDefault();
-      urlInput.value = text.trim();
+      urlInput.value = text;
       setDrop("URL pasted", "ok");
     }
   });
@@ -115,18 +120,20 @@
     e.preventDefault();
     drop.classList.remove("over");
     const file = e.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith("image/")) await handleImage(file);
+    if (file?.type.startsWith("image/")) await handleImage(file);
   });
 
   async function handleImage(blob) {
     setDrop("Decoding QR…", "");
     try {
       const url = await decodeQr(blob);
-      if (url) {
+      if (!url) {
+        setDrop("Could not read a QR code from that image", "err");
+      } else if (!url.startsWith("oktaverify://")) {
+        setDrop("That QR code is not an Okta Verify enrollment code", "err");
+      } else {
         urlInput.value = url;
         setDrop("QR decoded ✓", "ok");
-      } else {
-        setDrop("Could not read a QR code from that image", "err");
       }
     } catch (err) {
       setDrop("Error decoding: " + err.message, "err");
@@ -141,17 +148,17 @@
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
-    return code?.data || null;
+    return jsQR(imageData.data, imageData.width, imageData.height)?.data || null;
   }
 
   function blobToImage(blob) {
+    const src = URL.createObjectURL(blob);
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error("Invalid image"));
-      img.src = URL.createObjectURL(blob);
-    });
+      img.src = src;
+    }).finally(() => URL.revokeObjectURL(src));
   }
 
   function setDrop(text, cls) {
@@ -161,9 +168,10 @@
   }
 
   submitBtn.addEventListener("click", async () => {
-    resultDiv.innerHTML = "";
+    resultDiv.replaceChildren();
     const oktaUrl = urlInput.value.trim();
-    const deviceName = deviceInput.value.trim() || "1Password";
+    const name = deviceName();
+    if (!name) return;
 
     if (!oktaUrl.startsWith("oktaverify://")) {
       showError("URL must start with oktaverify://");
@@ -178,29 +186,31 @@
       const r = await fetch("/api/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ oktaUrl, deviceName })
+        body: JSON.stringify({ oktaUrl, deviceName: name })
       });
-      const data = await r.json();
+      const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showError(data.error || r.statusText, data.response ?? data);
+        showError(data.error || `${r.status} ${r.statusText}`, data.response);
       } else if (!data.sharedSecret) {
         showError("Response did not contain a sharedSecret", data.raw);
       } else {
-        showSecret(data.sharedSecret);
+        showSecret(data.sharedSecret, name);
       }
     } catch (err) {
       showError(err.message);
     } finally {
-      submitBtn.disabled = false;
       submitBtn.textContent = originalLabel;
+      updateSubmit();
     }
   });
 
-  function showSecret(secret) {
+  function showSecret(secret, name) {
     const wrap = document.createElement("div");
     wrap.className = "result";
     const label = document.createElement("div");
-    label.innerHTML = "<strong>Shared secret (paste into 1Password)</strong>";
+    const title = document.createElement("strong");
+    title.textContent = `Shared secret (paste into ${name})`;
+    label.appendChild(title);
     const box = document.createElement("div");
     box.className = "secret";
     box.textContent = secret;
@@ -210,8 +220,12 @@
     const copy = document.createElement("button");
     copy.textContent = "Copy";
     copy.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(secret);
-      copy.textContent = "Copied ✓";
+      try {
+        await navigator.clipboard.writeText(secret);
+        copy.textContent = "Copied ✓";
+      } catch {
+        copy.textContent = "Copy failed";
+      }
       setTimeout(() => (copy.textContent = "Copy"), 1500);
     });
     row.appendChild(copy);
@@ -223,7 +237,9 @@
     const wrap = document.createElement("div");
     wrap.className = "error";
     const head = document.createElement("div");
-    head.innerHTML = "<strong>Error:</strong> " + msg;
+    const prefix = document.createElement("strong");
+    prefix.textContent = "Error:";
+    head.append(prefix, " " + msg);
     wrap.appendChild(head);
     if (detail !== undefined) {
       const pre = document.createElement("pre");
